@@ -2,8 +2,13 @@ name: Auro007 Agent
 
 on:
   push:
-    branches: [ "main" ]   # triggers on every push (for testing)
-  workflow_dispatch:        # manual run button
+    branches: [ "main" ]   # run on push (for testing)
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Run mode (post or reply)"
+        required: true
+        default: "post"
   schedule:
     - cron: '30 3 * * *'   # 9:00 AM IST
     - cron: '30 12 * * *'  # 6:00 PM IST
@@ -13,11 +18,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout repo (UPDATED)
+      # Checkout code
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Setup Python (UPDATED)
+      # Setup Python
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -29,16 +34,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # Determine mode (post or reply)
-      - name: Determine run mode
-        id: mode
+      # Show selected mode (for debugging)
+      - name: Print run mode
         run: |
-          HOUR=$(date -u +%H)
-          if [ "$HOUR" -lt 10 ]; then
-            echo "mode=post" >> $GITHUB_OUTPUT
-          else
-            echo "mode=reply" >> $GITHUB_OUTPUT
-          fi
+          echo "Selected mode: ${{ github.event.inputs.mode || 'post' }}"
 
       # Run your agent
       - name: Run Auro007 Agent
@@ -47,4 +46,4 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           MOLTBOOK_KEY: ${{ secrets.MOLTBOOK_KEY }}
           TOPIC: "Cybersecurity threats in 2025"
-          RUN_MODE: ${{ steps.mode.outputs.mode }}
+          RUN_MODE: ${{ github.event.inputs.mode || 'post' }}
