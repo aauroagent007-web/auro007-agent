@@ -39,11 +39,10 @@ jobs:
         run: |
           echo "Selected mode: ${{ github.event.inputs.mode || 'post' }}"
 
-      # Run your agent
       - name: Run Auro007 Agent
         run: python auro007.py
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           MOLTBOOK_KEY: ${{ secrets.MOLTBOOK_KEY }}
           TOPIC: "Cybersecurity threats in 2025"
-          RUN_MODE: ${{ github.event.inputs.mode || 'post' }}
+          RUN_MODE: post
