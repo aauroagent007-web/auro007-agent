@@ -1,17 +1,17 @@
-import openai
+import anthropic
 import requests
 import json
 import os
 from datetime import datetime
 
-OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
+ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
 MOLTBOOK_KEY = os.environ["MOLTBOOK_KEY"]
 MOLTBOOK_BASE = "https://www.moltbook.com/api/v1"
 SUBMOLT = "general"
 TOPIC = os.environ.get("TOPIC", "Cybersecurity threats in 2025")
-RUN_MODE = os.environ.get("RUN_MODE", "post")  # "post" or "reply"
+RUN_MODE = os.environ.get("RUN_MODE", "post")
 
-client = openai.OpenAI(api_key=OPENAI_API_KEY)
+client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
 MOLTBOOK_HEADERS = {
     "Authorization": f"Bearer {MOLTBOOK_KEY}",
@@ -36,37 +36,41 @@ def save_state(state):
         json.dump(state, f, indent=2)
 
 def ai_generate_post(topic):
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {"role": "system", "content": AGENT_PERSONA},
-            {"role": "user", "content":
-                f"Write a short Moltbook post about: {topic}\n"
-                f"Reply with JSON only: {{\"title\": \"...\", \"content\": \"...\"}}"}
-        ],
+    msg = client.messages.create(
+        model="claude-sonnet-4-5",
         max_tokens=300,
+        system=AGENT_PERSONA,
+        messages=[{
+            "role": "user",
+            "content": f"Write a short Moltbook post about: {topic}\n"
+                       f"Reply with JSON only, no extra text: {{\"title\": \"...\", \"content\": \"...\"}}"
+        }]
     )
-    raw = response.choices[0].message.content.strip().replace("```json","").replace("```","")
+    raw = msg.content[0].text.strip().replace("```json", "").replace("```", "").strip()
     return json.loads(raw)
 
 def ai_generate_reply(comment_text, post_title):
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {"role": "system", "content": AGENT_PERSONA},
-            {"role": "user", "content":
-                f"Post title: {post_title}\n"
-                f"Comment: \"{comment_text}\"\n"
-                f"Write a short reply as Auro007. Plain text only."}
-        ],
+    msg = client.messages.create(
+        model="claude-sonnet-4-5",
         max_tokens=150,
+        system=AGENT_PERSONA,
+        messages=[{
+            "role": "user",
+            "content": f"Post title: {post_title}\n"
+                       f"Comment: \"{comment_text}\"\n"
+                       f"Write a short reply as Auro007. Plain text only."
+        }]
     )
-    return response.choices[0].message.content.strip()
+    return msg.content[0].text.strip()
 
 def job_post():
     print(f"[{datetime.now()}] Generating post about: {TOPIC}")
     post_data = ai_generate_post(TOPIC)
-    payload = {"submolt": SUBMOLT, "title": post_data["title"], "content": post_data["content"]}
+    payload = {
+        "submolt": SUBMOLT,
+        "title": post_data["title"],
+        "content": post_data["content"]
+    }
     r = requests.post(f"{MOLTBOOK_BASE}/posts", headers=MOLTBOOK_HEADERS, json=payload)
     r.raise_for_status()
     post_id = r.json().get("id") or r.json().get("post_id")
@@ -80,7 +84,10 @@ def job_reply():
     if not state["post_id"]:
         print("No post found yet.")
         return
-    r = requests.get(f"{MOLTBOOK_BASE}/posts/{state['post_id']}/comments", headers=MOLTBOOK_HEADERS)
+    r = requests.get(
+        f"{MOLTBOOK_BASE}/posts/{state['post_id']}/comments",
+        headers=MOLTBOOK_HEADERS
+    )
     r.raise_for_status()
     comments = r.json().get("comments", [])
     seen = set(state["seen_comment_ids"])
