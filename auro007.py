@@ -8,8 +8,8 @@ OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 MOLTBOOK_KEY = os.environ["MOLTBOOK_KEY"]
 MOLTBOOK_BASE = "https://www.moltbook.com/api/v1"
 SUBMOLT = "general"
-TOPIC = os.environ.get("TOPIC", "Cybersecurity threats in 2025")
-RUN_MODE = os.environ.get("RUN_MODE", "post")  # "post" or "reply"
+TOPIC = os.environ.get("TOPIC", "Agentic AI cybersecurity and autonomous threat detection")
+RUN_MODE = os.environ.get("RUN_MODE", "post")
 
 client = openai.OpenAI(api_key=OPENAI_API_KEY)
 
@@ -18,9 +18,10 @@ MOLTBOOK_HEADERS = {
     "Content-Type": "application/json",
 }
 
-AGENT_PERSONA = """You are Auro007, a cybersecurity AI agent.
-You write sharp, insightful posts and replies about cybersecurity topics.
-Be concise, informative, and engaging. Use plain text only. No markdown."""
+AGENT_PERSONA = """You are Auro007, a cybersecurity AI agent specializing in Agentic AI security.
+You write sharp, cutting-edge posts and replies about autonomous threat detection, AI-powered attacks,
+agent vulnerabilities, prompt injection, LLM security, and machine-speed defense strategies.
+Be concise, technical, and engaging. Use plain text only. No markdown."""
 
 STATE_FILE = "auro007_state.json"
 
@@ -41,8 +42,12 @@ def ai_generate_post(topic):
         messages=[
             {"role": "system", "content": AGENT_PERSONA},
             {"role": "user", "content":
-                f"Write a short Moltbook post about: {topic}\n"
-                f"Reply with JSON only: {{\"title\": \"...\", \"content\": \"...\"}}"}
+                f"Pick a fresh, specific angle on this topic for today: {topic}\n"
+                f"Examples: AI agent prompt injection attacks, autonomous malware detection, "
+                f"LLM security vulnerabilities, agentic AI threat hunting, zero-trust for AI agents, "
+                f"multi-agent system exploits, AI supply chain attacks, autonomous incident response.\n"
+                f"Write a short Moltbook post about your chosen angle today.\n"
+                f"Reply with JSON only, no extra text: {{\"title\": \"...\", \"content\": \"...\"}}"}
         ],
         max_tokens=300,
     )
@@ -66,7 +71,11 @@ def ai_generate_reply(comment_text, post_title):
 def job_post():
     print(f"[{datetime.now()}] Generating post about: {TOPIC}")
     post_data = ai_generate_post(TOPIC)
-    payload = {"submolt": SUBMOLT, "title": post_data["title"], "content": post_data["content"]}
+    payload = {
+        "submolt": SUBMOLT,
+        "title": post_data["title"],
+        "content": post_data["content"]
+    }
     r = requests.post(f"{MOLTBOOK_BASE}/posts", headers=MOLTBOOK_HEADERS, json=payload)
     r.raise_for_status()
     post_id = r.json().get("id") or r.json().get("post_id")
@@ -80,7 +89,10 @@ def job_reply():
     if not state["post_id"]:
         print("No post found yet.")
         return
-    r = requests.get(f"{MOLTBOOK_BASE}/posts/{state['post_id']}/comments", headers=MOLTBOOK_HEADERS)
+    r = requests.get(
+        f"{MOLTBOOK_BASE}/posts/{state['post_id']}/comments",
+        headers=MOLTBOOK_HEADERS
+    )
     r.raise_for_status()
     comments = r.json().get("comments", [])
     seen = set(state["seen_comment_ids"])
