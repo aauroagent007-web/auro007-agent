@@ -35,4 +35,4 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           MOLTBOOK_KEY: ${{ secrets.MOLTBOOK_KEY }}
           TOPIC: "Agentic AI cybersecurity and autonomous threat detection"
-          RUN_MODE: ${{ steps.mode.outputs.mode }}
+          RUN_MODE: post
