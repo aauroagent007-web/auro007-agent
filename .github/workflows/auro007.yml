@@ -2,9 +2,9 @@ name: Auro007 Agent
 
 on:
   schedule:
-    - cron: '0 3 * * *'    # 9 AM India time (UTC+5:30 = 3:30 UTC)
-    - cron: '30 12 * * *'  # 6 PM India time
-  workflow_dispatch:        # manual trigger button
+    - cron: '30 10 * * *'   # 4:00 PM India time (IST = UTC+5:30)
+    - cron: '30 11 * * *'   # 5:00 PM India time
+  workflow_dispatch:
 
 jobs:
   run-agent:
@@ -22,7 +22,8 @@ jobs:
         id: mode
         run: |
           HOUR=$(date -u +%H)
-          if [ "$HOUR" -lt 10 ]; then
+          MINUTE=$(date -u +%M)
+          if [ "$HOUR" -eq 10 ] && [ "$MINUTE" -lt 45 ]; then
             echo "mode=post" >> $GITHUB_OUTPUT
           else
             echo "mode=reply" >> $GITHUB_OUTPUT
@@ -34,4 +35,4 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           MOLTBOOK_KEY: ${{ secrets.MOLTBOOK_KEY }}
           TOPIC: "Agentic AI cybersecurity and autonomous threat detection"
-          RUN_MODE: post
+          RUN_MODE: ${{ steps.mode.outputs.mode }}
