@@ -3,7 +3,7 @@ name: Auro007 Agent
 on:
   schedule:
     - cron: '30 10 * * *'   # 4:00 PM India time (IST = UTC+5:30)
-    - cron: '30 11 * * *'   # 5:00 PM India time
+    - cron: '10 12 * * *'   # 5:40 PM India time (IST = UTC+5:30)
   workflow_dispatch:
     inputs:
       mode:
