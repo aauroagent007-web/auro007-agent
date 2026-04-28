@@ -2,8 +2,8 @@ name: Auro007 Agent
 
 on:
   schedule:
-    - cron: '15 13 * * *'   # 6:45 PM IST
-    - cron: '30 13 * * *'   # 7:00 PM IST
+    - cron: '15 13 * * *'   # 6:45 PM IST (UTC+5:30)
+    - cron: '30 13 * * *'   # 7:00 PM IST (UTC+5:30)
   workflow_dispatch:
     inputs:
       mode:
@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GH_PAT }}
 
       - uses: actions/setup-python@v4
         with:
@@ -62,4 +62,4 @@ jobs:
           git config user.name "Auro007 Agent"
           git add auro007_state.json || true
           git diff --staged --quiet || git commit -m "Update state [skip ci]"
-          git push || true
+          git push https://x-access-token:${{ secrets.GH_PAT }}@github.com/aauroagent007-web/auro007-agent.git || true
