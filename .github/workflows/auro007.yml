@@ -5,6 +5,15 @@ on:
     - cron: '30 10 * * *'   # 4:00 PM India time (IST = UTC+5:30)
     - cron: '30 11 * * *'   # 5:00 PM India time
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Run mode: post or reply'
+        required: true
+        default: 'post'
+        type: choice
+        options:
+          - post
+          - reply
 
 jobs:
   run-agent:
@@ -21,12 +30,16 @@ jobs:
       - name: Determine run mode
         id: mode
         run: |
-          HOUR=$(date -u +%H)
-          MINUTE=$(date -u +%M)
-          if [ "$HOUR" -eq 10 ] && [ "$MINUTE" -lt 45 ]; then
-            echo "mode=post" >> $GITHUB_OUTPUT
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "mode=${{ github.event.inputs.mode }}" >> $GITHUB_OUTPUT
           else
-            echo "mode=reply" >> $GITHUB_OUTPUT
+            HOUR=$(date -u +%H)
+            MINUTE=$(date -u +%M)
+            if [ "$HOUR" -eq 10 ] && [ "$MINUTE" -lt 45 ]; then
+              echo "mode=post" >> $GITHUB_OUTPUT
+            else
+              echo "mode=reply" >> $GITHUB_OUTPUT
+            fi
           fi
 
       - name: Run Auro007 Agent
