@@ -2,8 +2,8 @@ name: Auro007 Agent
 
 on:
   schedule:
-    - cron: '15 13 * * *'   # 6:45 PM IST (UTC+5:30)
-    - cron: '30 13 * * *'   # 7:00 PM IST (UTC+5:30)
+    - cron: '15 13 * * *'   # 6:45 PM IST
+    - cron: '30 13 * * *'   # 7:00 PM IST
   workflow_dispatch:
     inputs:
       mode:
@@ -15,11 +15,16 @@ on:
           - post
           - reply
 
+permissions:
+  contents: write
+
 jobs:
   run-agent:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-python@v4
         with:
