@@ -2,8 +2,8 @@ name: Auro007 Agent
 
 on:
   schedule:
-    - cron: '30 10 * * *'   # 4:00 PM India time (IST = UTC+5:30)
-    - cron: '10 12 * * *'   # 5:40 PM India time (IST = UTC+5:30)
+    - cron: '52 12 * * *'   # 6:22 PM IST (UTC+5:30)
+    - cron: '10 12 * * *'   # 5:40 PM IST (UTC+5:30)
   workflow_dispatch:
     inputs:
       mode:
@@ -35,7 +35,7 @@ jobs:
           else
             HOUR=$(date -u +%H)
             MINUTE=$(date -u +%M)
-            if [ "$HOUR" -eq 10 ] && [ "$MINUTE" -lt 45 ]; then
+            if [ "$HOUR" -eq 12 ] && [ "$MINUTE" -ge 48 ] && [ "$MINUTE" -lt 58 ]; then
               echo "mode=post" >> $GITHUB_OUTPUT
             else
               echo "mode=reply" >> $GITHUB_OUTPUT
@@ -49,3 +49,5 @@ jobs:
           MOLTBOOK_KEY: ${{ secrets.MOLTBOOK_KEY }}
           TOPIC: "Agentic AI cybersecurity and autonomous threat detection"
           RUN_MODE: ${{ steps.mode.outputs.mode }}
+
+# updated schedule 6:22 PM IST
