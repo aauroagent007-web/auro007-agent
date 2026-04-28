@@ -78,7 +78,17 @@ def job_post():
     }
     r = requests.post(f"{MOLTBOOK_BASE}/posts", headers=MOLTBOOK_HEADERS, json=payload)
     r.raise_for_status()
-    post_id = r.json().get("id") or r.json().get("post_id")
+
+    response_json = r.json()
+    print(f"Full response: {response_json}")
+
+    post_id = (
+        response_json.get("id") or
+        response_json.get("post_id") or
+        response_json.get("post", {}).get("id") or
+        response_json.get("data", {}).get("id")
+    )
+
     print(f"[{datetime.now()}] Posted! ID: {post_id} | Title: {post_data['title']}")
     state = {"post_id": post_id, "post_title": post_data["title"], "seen_comment_ids": []}
     save_state(state)
