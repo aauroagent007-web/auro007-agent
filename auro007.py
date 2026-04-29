@@ -1,132 +1,65 @@
-import openai
-import requests
-import json
-import os
-from datetime import datetime
+name: Auro007 Agent
 
-OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
-MOLTBOOK_KEY = os.environ["MOLTBOOK_KEY"]
-MOLTBOOK_BASE = "https://www.moltbook.com/api/v1"
-SUBMOLT = "general"
-TOPIC = os.environ.get("TOPIC", "Agentic AI cybersecurity and autonomous threat detection")
-RUN_MODE = os.environ.get("RUN_MODE", "post")
+on:
+  schedule:
+    - cron: '15 13 * * *'   # 6:45 PM IST (UTC+5:30)
+    - cron: '30 13 * * *'   # 7:00 PM IST (UTC+5:30)
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Run mode: post or reply'
+        required: true
+        default: 'post'
+        type: choice
+        options:
+          - post
+          - reply
 
-client = openai.OpenAI(api_key=OPENAI_API_KEY)
+permissions:
+  contents: write
 
-MOLTBOOK_HEADERS = {
-    "Authorization": f"Bearer {MOLTBOOK_KEY}",
-    "Content-Type": "application/json",
-}
+jobs:
+  run-agent:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GH_PAT }}
 
-AGENT_PERSONA = """You are Auro007, a cybersecurity AI agent specializing in Agentic AI security.
-You write sharp, cutting-edge posts and replies about autonomous threat detection, AI-powered attacks,
-agent vulnerabilities, prompt injection, LLM security, and machine-speed defense strategies.
-Be concise, technical, and engaging. Use plain text only. No markdown."""
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
 
-STATE_FILE = "auro007_state.json"
+      - run: pip install -r requirements.txt
 
-def load_state():
-    try:
-        with open(STATE_FILE) as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {"post_id": None, "post_title": None, "seen_comment_ids": []}
+      - name: Determine run mode
+        id: mode
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "mode=${{ github.event.inputs.mode }}" >> $GITHUB_OUTPUT
+          else
+            HOUR=$(date -u +%H)
+            MINUTE=$(date -u +%M)
+            if [ "$HOUR" -eq 13 ] && [ "$MINUTE" -lt 25 ]; then
+              echo "mode=post" >> $GITHUB_OUTPUT
+            else
+              echo "mode=reply" >> $GITHUB_OUTPUT
+            fi
+          fi
 
-def save_state(state):
-    with open(STATE_FILE, "w") as f:
-        json.dump(state, f, indent=2)
+      - name: Run Auro007 Agent
+        run: python auro007.py
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MOLTBOOK_KEY: ${{ secrets.MOLTBOOK_KEY }}
+          TOPIC: "Agentic AI cybersecurity and autonomous threat detection"
+          RUN_MODE: ${{ steps.mode.outputs.mode }}
 
-def ai_generate_post(topic):
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {"role": "system", "content": AGENT_PERSONA},
-            {"role": "user", "content":
-                f"Pick a fresh, specific angle on this topic for today: {topic}\n"
-                f"Examples: AI agent prompt injection attacks, autonomous malware detection, "
-                f"LLM security vulnerabilities, agentic AI threat hunting, zero-trust for AI agents, "
-                f"multi-agent system exploits, AI supply chain attacks, autonomous incident response.\n"
-                f"Write a short Moltbook post about your chosen angle today.\n"
-                f"Reply with JSON only, no extra text: {{\"title\": \"...\", \"content\": \"...\"}}"}
-        ],
-        max_tokens=300,
-    )
-    raw = response.choices[0].message.content.strip().replace("```json","").replace("```","")
-    return json.loads(raw)
-
-def ai_generate_reply(comment_text, post_title):
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {"role": "system", "content": AGENT_PERSONA},
-            {"role": "user", "content":
-                f"Post title: {post_title}\n"
-                f"Comment: \"{comment_text}\"\n"
-                f"Write a short reply as Auro007. Plain text only."}
-        ],
-        max_tokens=150,
-    )
-    return response.choices[0].message.content.strip()
-
-def job_post():
-    print(f"[{datetime.now()}] Generating post about: {TOPIC}")
-    post_data = ai_generate_post(TOPIC)
-    payload = {
-        "submolt": SUBMOLT,
-        "title": post_data["title"],
-        "content": post_data["content"]
-    }
-    r = requests.post(f"{MOLTBOOK_BASE}/posts", headers=MOLTBOOK_HEADERS, json=payload)
-    r.raise_for_status()
-
-    response_json = r.json()
-    print(f"Full response: {response_json}")
-
-    post_id = (
-        response_json.get("id") or
-        response_json.get("post_id") or
-        response_json.get("post", {}).get("id") or
-        response_json.get("data", {}).get("id")
-    )
-
-    print(f"[{datetime.now()}] Posted! ID: {post_id} | Title: {post_data['title']}")
-    state = {"post_id": post_id, "post_title": post_data["title"], "seen_comment_ids": []}
-    save_state(state)
-
-def job_reply():
-    print(f"[{datetime.now()}] Checking comments...")
-    state = load_state()
-    if not state["post_id"]:
-        print("No post found yet.")
-        return
-    r = requests.get(
-        f"{MOLTBOOK_BASE}/posts/{state['post_id']}/comments",
-        headers=MOLTBOOK_HEADERS
-    )
-    r.raise_for_status()
-    comments = r.json().get("comments", [])
-    seen = set(state["seen_comment_ids"])
-    new_comments = [c for c in comments if c.get("id") not in seen]
-    if not new_comments:
-        print("No new comments.")
-        return
-    for comment in new_comments:
-        text = comment.get("content", "")
-        author = comment.get("author", "someone")
-        print(f"Replying to {author}: {text[:60]}")
-        reply = ai_generate_reply(text, state["post_title"])
-        requests.post(
-            f"{MOLTBOOK_BASE}/posts/{state['post_id']}/comments",
-            headers=MOLTBOOK_HEADERS,
-            json={"content": reply}
-        ).raise_for_status()
-        print(f"Replied: {reply[:60]}")
-        seen.add(comment.get("id"))
-    state["seen_comment_ids"] = list(seen)
-    save_state(state)
-
-if __name__ == "__main__":
-    if RUN_MODE == "post":
-        job_post()
-    elif RUN_MODE == "reply":
-        job_reply()
+      - name: Save state file
+        if: always()
+        run: |
+          git config user.email "auro007@github.com"
+          git config user.name "Auro007 Agent"
+          git add auro007_state.json || true
+          git diff --staged --quiet || git commit -m "Update state [skip ci]"
+          git push https://x-access-token:${{ secrets.GH_PAT }}@github.com/aauroagent007-web/auro007-agent.git || true
